@@ -1,0 +1,38 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+
+# Virtual Environment
+.venv/
+venv/
+env/
+.env
+
+# Logs and Runtime Data
+# Ensure logs directory is created but log files are ignored
+data/
+*.log
+
+# SQLite Database
+data/*.db
+data/*.sqlite
+
+# Build artifacts
+dist/
+*.egg-info/
+build/
+
+# IDE and OS specific files
+.vscode/
+.DS_Store
+
+# Editor/Temp Files (Optional, common in Linux/WSL environments)
+*~
+*.swp
+
+# Specific to LLM Workflows (Reports and Sprints if they are temporary checkpoints)
+# We are keeping reports/ and sprints/ for now as checkpoints, but if they become messy:
+# reports/
+# sprints/
