@@ -25,12 +25,14 @@ The generated API key will be displayed in the terminal output.
 
 To use the generated API key, include it in the `X-API-KEY` header of your requests to the Grok-Api server. For example:
 
+### WRONG!
 ```bash
 curl -X POST http://0.0.0.0:6969/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "X-API-KEY: YOUR_API_KEY" \
   -d '{"message": "Hello, Grok!"}'
 ```
+### WRONG!
 
 ## Managing API Keys
 

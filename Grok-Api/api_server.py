@@ -3,16 +3,15 @@ from urllib.parse import urlparse, ParseResult
 from pydantic     import BaseModel
 from core         import Grok
 from uvicorn      import run
-
-
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import APIKeyHeader
 from core.models import Models
 from db import validate_api_key
-
 from dotenv import load_dotenv
 import os
 import logging
+import time
+import secrets
 
 load_dotenv()
 
@@ -83,22 +82,87 @@ def format_proxy(proxy: str) -> str:
 @app.get("/v1/models")
 async def get_models(api_key: str = Depends(get_api_key)):
     logging.info(f"GET /v1/models called with API key: {api_key}")
-async def get_models(api_key: str = Depends(get_api_key)):
     return Models.get_models()
-    if not request.proxy or not request.message:
-        raise HTTPException(status_code=400, detail="Proxy and message are required")
-    
-    proxy = format_proxy(request.proxy)
-    
+
+class ChatCompletionRequest(BaseModel):
+    model: str = "grok-3-auto"
+    messages: list
+    max_tokens: int = None
+    temperature: float = None
+    stream: bool = False
+
+@app.post("/v1/chat/completions")
+async def chat_completions(request: ChatCompletionRequest, api_key: str = Depends(get_api_key)):
+    logging.info(f"POST /v1/chat/completions called with API key: {api_key}, model: {request.model}")
+
+    # Extract the last user message
+    user_message = None
+    system_message = None
+
+    for msg in request.messages:
+        if msg["role"] == "user":
+            user_message = msg["content"]
+        elif msg["role"] == "system":
+            system_message = msg["content"]
+
+    if not user_message:
+        raise HTTPException(status_code=400, detail="No user message found")
+
+    # Build context from conversation history
+    context = ""
+    if system_message:
+        context += f"System: {system_message}\n"
+
+    # Add conversation history (excluding the current user message)
+    for msg in request.messages[:-1]:
+        if msg["role"] == "user":
+            context += f"User: {msg['content']}\n"
+        elif msg["role"] == "assistant":
+            context += f"Assistant: {msg['content']}\n"
+
+    # Combine context with current message
+    full_message = context + f"User: {user_message}"
+
     try:
-        logging.info(f"Processing request with proxy: {request.proxy}, message: {request.message}, model: {request.model}")
-        answer: dict = Grok(request.model, proxy).start_convo(request.message, request.extra_data)
+        # Get proxy from environment
+        proxy = os.getenv('SOCKS5', None)
+        if proxy:
+            proxy = format_proxy(proxy)
+
+        logging.info(f"Processing chat completion with model: {request.model}")
+        grok_response = Grok(request.model, proxy).start_convo(full_message)
+
+        # Format response in OpenAI style
+        response_id = f"chatcmpl-{secrets.token_hex(16)}"
+        created = int(time.time())
+
+        # Estimate token usage
+        prompt_tokens = len(full_message.split()) * 1.3  # Rough estimate
+        completion_tokens = len(grok_response.get("response", "").split()) * 1.3
+        total_tokens = prompt_tokens + completion_tokens
 
         return {
-            "status": "success",
-            **answer
+            "id": response_id,
+            "object": "chat.completion",
+            "created": created,
+            "model": request.model,
+            "choices": [{
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": grok_response.get("response", "")
+                },
+                "finish_reason": "stop"
+            }],
+            "usage": {
+                "prompt_tokens": int(prompt_tokens),
+                "completion_tokens": int(completion_tokens),
+                "total_tokens": int(total_tokens)
+            }
         }
+
     except Exception as e:
+        logging.error(f"Error in chat completion: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 if __name__ == "__main__":
