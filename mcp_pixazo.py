@@ -8,6 +8,11 @@ import requests
 import json
 from datetime import datetime
 from db_manager import initialize_db, save_metadata
+from dotenv import load_dotenv
+import uuid
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Determine project root path from command line arguments
 def get_project_root():
@@ -43,6 +48,12 @@ Config.DATABASE_PATH = os.path.join(GLOBAL_PROJECT_ROOT, "data", "metadata.db")
 Config.GENERATED_IMAGES_DIR = os.path.join(GLOBAL_PROJECT_ROOT, "data", "generated")
 Config.LOG_FILE = os.path.join(GLOBAL_PROJECT_ROOT, "logs", "mcp_errors.log")
 
+# Define absolute image storage path
+GENERATED_IMAGES_DIR = os.path.join(GLOBAL_PROJECT_ROOT, "data", "generated", "default")
+
+# Ensure the directory structure exists
+os.makedirs(GENERATED_IMAGES_DIR, exist_ok=True)
+
 server = Server("MCP_PIXAZO")
 
 # Load API Key and validate environment
@@ -55,6 +66,45 @@ try:
     initialize_db(Config.DATABASE_PATH)
 except Exception as e:
     print(f"Warning: Could not initialize database: {e}")
+
+def download_image(image_url: str, save_path: str) -> bool:
+    """
+    Download image from remote URL and save locally.
+    
+    Args:
+        image_url (str): URL of the image to download
+        save_path (str): Local path to save the image
+    
+    Returns:
+        bool: True if download successful, False otherwise
+    """
+    try:
+        response = requests.get(image_url, stream=True)
+        response.raise_for_status()
+        
+        with open(save_path, 'wb') as file:
+            for chunk in response.iter_content(chunk_size=8192):
+                file.write(chunk)
+        
+        return True
+    except Exception as e:
+        print(f"Error downloading image: {e}")
+        return False
+
+def get_generation_defaults() -> dict:
+    """
+    Load generation defaults from environment variables.
+    
+    Returns:
+        dict: Dictionary of default generation parameters
+    """
+    return {
+        "height": Config.DEFAULT_HEIGHT,
+        "width": Config.DEFAULT_WIDTH,
+        "num_steps": Config.DEFAULT_NUM_STEPS,
+        "guidance_scale": Config.DEFAULT_GUIDANCE_SCALE,  # Minimum of 7
+        "seed": Config.DEFAULT_SEED
+    }
 
 @server.list_tools()
 async def list_tools() -> list[types.Tool]:
@@ -99,14 +149,8 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
         timestamp = datetime.now().isoformat()
         
         try:
-            # Define defaults
-            defaults = {
-                "height": 1024,
-                "width": 1024,
-                "num_steps": 20,
-                "guidance_scale": 5,
-                "seed": 42
-            }
+            # Load defaults from environment variables
+            defaults = get_generation_defaults()
             
             # Merge caller arguments with defaults (caller arguments take precedence)
             data_payload = defaults.copy()
@@ -129,24 +173,44 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
                     response_data = response.json()
                     image_url = response_data.get('imageUrl')
                     
-                    # Save metadata to database
-                    metadata = {
-                        'timestamp': timestamp,
-                        'prompt': arguments['prompt'],
-                        'parameters_json': data_payload,
-                        'image_url': image_url,
-                        'status': 'SUCCESS'
-                    }
-                    save_metadata(Config.DATABASE_PATH, metadata)
+                    # Generate unique filename for local storage
+                    filename = f"pixazo_{uuid.uuid4().hex[:16]}.png"
+                    local_save_path = os.path.join(GENERATED_IMAGES_DIR, filename)
                     
-                    return [types.TextContent(type="text", text=f"Image generated successfully! URL: {image_url}")]
+                    # Download the image
+                    download_success = download_image(image_url, local_save_path)
+                    
+                    if download_success:
+                        # Save metadata to database with local path
+                        metadata = {
+                            'timestamp': timestamp,
+                            'prompt': arguments['prompt'],
+                            'parameters_json': arguments,  # Store original arguments only
+                            'image_url': local_save_path,  # Store local path
+                            'status': 'SUCCESS'
+                        }
+                        save_metadata(Config.DATABASE_PATH, metadata)
+                        
+                        return [types.TextContent(type="text", text=f"Image generated and saved successfully! Local path: {local_save_path}")]
+                    else:
+                        # Download failed, save error metadata
+                        metadata = {
+                            'timestamp': timestamp,
+                            'prompt': arguments['prompt'],
+                            'parameters_json': arguments,  # Store original arguments only
+                            'image_url': image_url,  # Store remote URL for reference
+                            'status': 'DOWNLOAD_FAILED'
+                        }
+                        save_metadata(Config.DATABASE_PATH, metadata)
+                        
+                        return [types.TextContent(type="text", text=f"Image generated but download failed. Remote URL: {image_url}")]
                     
                 except json.JSONDecodeError:
                     error_msg = "Error: Invalid JSON response from Pixazo API"
                     metadata = {
                         'timestamp': timestamp,
                         'prompt': arguments['prompt'],
-                        'parameters_json': data_payload,
+                        'parameters_json': arguments,  # Store original arguments only
                         'image_url': None,
                         'status': f'HTTP_{response.status_code}'
                     }
@@ -165,7 +229,7 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
                 metadata = {
                     'timestamp': timestamp,
                     'prompt': arguments['prompt'],
-                    'parameters_json': data_payload,
+                    'parameters_json': arguments,  # Store original arguments only
                     'image_url': None,
                     'status': f'HTTP_{response.status_code}'
                 }
@@ -178,7 +242,7 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
             metadata = {
                 'timestamp': timestamp,
                 'prompt': arguments['prompt'],
-                'parameters_json': data_payload if 'data_payload' in locals() else arguments,
+                'parameters_json': arguments,  # Store original arguments only
                 'image_url': None,
                 'status': 'EXCEPTION'
             }
@@ -188,5 +252,66 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
     else:
         raise ValueError(f"Unknown tool: {name}")
 
+import asyncio
+import signal
+from mcp.server.stdio import stdio_server
+from mcp.server.models import InitializationOptions
+from mcp.server.lowlevel.server import NotificationOptions
+
+async def monitor_stdin(read_stream):
+    """Monitor stdin for shutdown signal."""
+    try:
+        while True:
+            line = await read_stream.readline()
+            if not line:
+                break
+    except asyncio.CancelledError:
+        pass
+
+async def main():
+    """Main server execution function."""
+    # Set up signal handlers
+    def signal_handler(signum, frame):
+        print(f"Received signal {signum}, shutting down...")
+        raise KeyboardInterrupt()
+    
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    try:
+        async with stdio_server() as (read_stream, write_stream):
+            # Initialize with proper options for Pydantic validation
+            init_options = InitializationOptions(
+                server_name="pixazo-mcp-tool",
+                server_version="1.0.0",
+                capabilities=server.get_capabilities(
+                    notification_options=NotificationOptions(),
+                    experimental_capabilities={}
+                )
+            )
+            
+            # Start monitoring stdin
+            monitor_task = asyncio.create_task(monitor_stdin(read_stream))
+            
+            try:
+                # Run the server with the correct MCP framework pattern
+                await server.run(
+                    read_stream,
+                    write_stream,
+                    init_options
+                )
+            finally:
+                # Clean up monitor task
+                monitor_task.cancel()
+                try:
+                    await monitor_task
+                except asyncio.CancelledError:
+                    pass
+    except KeyboardInterrupt:
+        print("Server shutdown requested by user")
+    except Exception as e:
+        print(f"Server error: {e}")
+        raise
+
 if __name__ == "__main__":
-    mcp.server.stdio.run_server(server)
+    asyncio.run(main())
