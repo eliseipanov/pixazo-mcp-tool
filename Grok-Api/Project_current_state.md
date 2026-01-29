@@ -319,12 +319,65 @@ INFO:     127.0.0.1:60056 - "POST /v1/chat/completions HTTP/1.1" 500 Internal Se
 
 **Impact**: Eliminates intermittent 500 errors when processing Grok API error responses. The server now consistently returns proper error responses with correct HTTP status codes.
 
+### SOCKS5 Proxy Configuration (CRITICAL - EMERGENCY FIX)
+
+**Issue**: SOCKS5 proxy functionality was disabled in [`api_server.py`](Grok-Api/api_server.py:147-153), breaking a core feature of the project. The proxy support was implemented but commented out for testing, causing all requests to bypass the SOCKS5 proxy.
+
+**Error Log Evidence**:
+```
+# TEMPORARILY DISABLE PROXY FOR TESTING
+proxy = None
+# proxy_env = os.getenv('SOCKS5', None)
+# if proxy_env:
+#     proxy = format_proxy(proxy_env)
+# else:
+#     proxy = None
+```
+
+**Fix Applied**: Implemented `USE_SOCKS=true/false` environment variable to control SOCKS5 proxy usage and restored correct proxy functionality.
+
+**Change Details** ([`api_server.py`](Grok-Api/api_server.py:146-156)):
+- **Before**: Proxy was hardcoded to `None` with commented-out proxy code
+- **After**: Implemented `USE_SOCKS` environment variable check:
+  ```python
+  # Check if SOCKS5 proxy should be used
+  use_socks = os.getenv('USE_SOCKS', 'false').lower() == 'true'
+  
+  if use_socks:
+      proxy_env = os.getenv('SOCKS5', None)
+      if proxy_env:
+          proxy = format_proxy(proxy_env)
+          logging.info(f"Using SOCKS5 proxy: {proxy}")
+      else:
+          logging.warning("USE_SOCKS is true but SOCKS5 environment variable is not set")
+          proxy = None
+  else:
+      proxy = None
+      logging.info("SOCKS5 proxy disabled")
+  ```
+
+**Configuration** ([`Grok-Api/.env.example`](Grok-Api/.env.example)):
+- Created `.env.example` file with proper SOCKS5 configuration:
+  ```bash
+  # SOCKS5 Proxy Configuration
+  # Set to 'true' to enable SOCKS5 proxy for all requests
+  USE_SOCKS=true
+  
+  # SOCKS5 proxy URL (required if USE_SOCKS=true)
+  # Format: socks5://user:password@ip:port
+  SOCKS5=socks5://127.0.0.1:16379
+  ```
+
+**Impact**: Restores core SOCKS5 proxy functionality with proper configuration control. The proxy can now be enabled/disabled via the `USE_SOCKS` environment variable without code changes.
+
 ### Additional Improvements
 
 1. **Error Message Clarity**: Maintained "Grok API Error:" prefix for consistency with existing error handling
 2. **Token Usage**: Kept token usage at 0 for error responses as appropriate
 3. **Error Classification**: The fix handles all Grok API errors uniformly with 502 status code
 4. **Code Quality**: Removed redundant import, improving code maintainability and preventing future scoping issues
+5. **Proxy Logging**: Added logging to track proxy usage and configuration status
+6. **Configuration Management**: Implemented environment variable-based proxy control for flexibility
 
 ## Diagnostic Improvements
 

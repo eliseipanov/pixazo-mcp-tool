@@ -104,6 +104,65 @@ async def test_endpoint():
     logging.info(f"Test endpoint called, returning response")
     return Response(content=json.dumps(test_response, ensure_ascii=False), media_type="application/json")
 
+@app.get("/socks")
+@app.post("/socks")
+async def socks_check():
+    """SOCKS5 proxy check endpoint - checks IP address without API key"""
+    try:
+        # Check if SOCKS5 proxy is enabled
+        use_socks = os.getenv('USE_SOCKS', 'false').lower() == 'true'
+        socks_proxy = os.getenv('SOCKS5', None)
+        
+        logging.info(f"SOCKS5 check requested - USE_SOCKS: {use_socks}, SOCKS5: {socks_proxy}")
+        
+        # Make request to jsonip.com to check IP address
+        import requests as http_requests
+        
+        # Configure proxy if SOCKS5 is enabled
+        proxies = None
+        if use_socks and socks_proxy:
+            proxies = {
+                "all": socks_proxy
+            }
+            logging.info(f"Using SOCKS5 proxy for IP check: {socks_proxy}")
+        
+        # Make request to jsonip.com
+        response = http_requests.get('https://jsonip.com/', proxies=proxies, timeout=10)
+        
+        if response.status_code == 200:
+            ip_data = response.json()
+            logging.info(f"IP check result: {ip_data}")
+            
+            result = {
+                "status": "success",
+                "use_socks": use_socks,
+                "socks_proxy": socks_proxy,
+                "ip_address": ip_data.get('ip', 'unknown'),
+                "location": ip_data.get('city', 'unknown') + ', ' + ip_data.get('country', 'unknown'),
+                "isp": ip_data.get('org', 'unknown'),
+                "timestamp": ip_data.get('time', 'unknown')
+            }
+        else:
+            logging.error(f"IP check failed with status code: {response.status_code}")
+            result = {
+                "status": "error",
+                "use_socks": use_socks,
+                "socks_proxy": socks_proxy,
+                "error": f"Failed to check IP address: HTTP {response.status_code}"
+            }
+        
+        return Response(content=json.dumps(result, ensure_ascii=False), media_type="application/json")
+    
+    except Exception as e:
+        logging.error(f"Error in SOCKS5 check: {str(e)}")
+        result = {
+            "status": "error",
+            "use_socks": os.getenv('USE_SOCKS', 'false'),
+            "socks_proxy": os.getenv('SOCKS5', None),
+            "error": str(e)
+        }
+        return Response(content=json.dumps(result, ensure_ascii=False), media_type="application/json", status_code=500)
+
 class ChatCompletionRequest(BaseModel):
     model: str = "grok-3-auto"
     messages: list
@@ -144,13 +203,20 @@ async def chat_completions(request: ChatCompletionRequest, api_key: str = Depend
     full_message = context + f"User: {user_message}"
 
     try:
-        # TEMPORARILY DISABLE PROXY FOR TESTING
-        proxy = None
-        # proxy_env = os.getenv('SOCKS5', None)
-        # if proxy_env:
-        #     proxy = format_proxy(proxy_env)
-        # else:
-        #     proxy = None
+        # Check if SOCKS5 proxy should be used
+        use_socks = os.getenv('USE_SOCKS', 'false').lower() == 'true'
+        
+        if use_socks:
+            proxy_env = os.getenv('SOCKS5', None)
+            if proxy_env:
+                proxy = format_proxy(proxy_env)
+                logging.info(f"Using SOCKS5 proxy: {proxy}")
+            else:
+                logging.warning("USE_SOCKS is true but SOCKS5 environment variable is not set")
+                proxy = None
+        else:
+            proxy = None
+            logging.info("SOCKS5 proxy disabled")
 
         logging.info(f"Processing chat completion with model: {request.model}")
         grok_response = Grok(request.model, proxy).start_convo(full_message)
