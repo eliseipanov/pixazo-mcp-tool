@@ -174,11 +174,15 @@ class Grok:
             
             convo_request: requests.models.Response = self.session.post('https://grok.com/rest/app-chat/conversations/new', json=conversation_data, timeout=9999)
             
+            Log.Info(f"Response status: {convo_request.status_code}")
+            Log.Info(f"Response contains 'modelResponse': {'modelResponse' in convo_request.text}")
+            Log.Info(f"Response text length: {len(convo_request.text)}")
+            
             if "modelResponse" in convo_request.text:
                 response = conversation_id = parent_response = image_urls = None
                 stream_response: list = []
                 
-                for response_dict in convo_request.text.strip().split('\n'):  
+                for response_dict in convo_request.text.strip().split('\n'):
                     data: dict = loads(response_dict)
 
                     token: str = data.get('result', {}).get('response', {}).get('token')
@@ -187,6 +191,7 @@ class Grok:
                         
                     if not response and data.get('result', {}).get('response', {}).get('modelResponse', {}).get('message'):
                         response: str = data['result']['response']['modelResponse']['message']
+                        Log.Info(f"Found response message: {response[:100]}...")
 
                     if not conversation_id and data.get('result', {}).get('conversation', {}).get('conversationId'):
                         conversation_id: str = data['result']['conversation']['conversationId']
@@ -196,6 +201,9 @@ class Grok:
                     
                     if not image_urls and data.get('result', {}).get('response', {}).get('modelResponse', {}).get('generatedImageUrls', {}):
                         image_urls: str = data['result']['response']['modelResponse']['generatedImageUrls']
+                
+                Log.Info(f"Final response: {response}")
+                Log.Info(f"Stream response tokens: {len(stream_response)}")
                     
                 
                 return {
@@ -215,7 +223,10 @@ class Grok:
                     }
                 }
             else:
+                Log.Info(f"Response does not contain 'modelResponse'")
+                Log.Info(f"Response text preview: {convo_request.text[:500]}")
                 if 'rejected by anti-bot rules' in convo_request.text:
+                    Log.Error("Rejected by anti-bot rules, retrying...")
                     return Grok(self.session.proxies.get("all")).start_convo(message=message, extra_data=extra_data)
                 Log.Error("Something went wrong")
                 Log.Error(convo_request.text)
@@ -262,6 +273,10 @@ class Grok:
 
             convo_request: requests.models.Response = self.session.post(f'https://grok.com/rest/app-chat/conversations/{extra_data["conversationId"]}/responses', json=conversation_data, timeout=9999)
 
+            Log.Info(f"Response status: {convo_request.status_code}")
+            Log.Info(f"Response contains 'modelResponse': {'modelResponse' in convo_request.text}")
+            Log.Info(f"Response text length: {len(convo_request.text)}")
+
             if "modelResponse" in convo_request.text:
                 response = conversation_id = parent_response = image_urls = None
                 stream_response: list = []
@@ -275,12 +290,16 @@ class Grok:
                         
                     if not response and data.get('result', {}).get('modelResponse', {}).get('message'):
                         response: str = data['result']['modelResponse']['message']
+                        Log.Info(f"Found response message: {response[:100]}...")
 
                     if not parent_response and data.get('result', {}).get('modelResponse', {}).get('responseId'):
                         parent_response: str = data['result']['modelResponse']['responseId']
                         
                     if not image_urls and data.get('result', {}).get('modelResponse', {}).get('generatedImageUrls', {}):
                         image_urls: str = data['result']['modelResponse']['generatedImageUrls']
+                
+                Log.Info(f"Final response: {response}")
+                Log.Info(f"Stream response tokens: {len(stream_response)}")
                 
                 return {
                     "response": response,
@@ -299,7 +318,10 @@ class Grok:
                     }
                 }
             else:
+                Log.Info(f"Response does not contain 'modelResponse'")
+                Log.Info(f"Response text preview: {convo_request.text[:500]}")
                 if 'rejected by anti-bot rules' in convo_request.text:
+                    Log.Error("Rejected by anti-bot rules, retrying...")
                     return Grok(self.session.proxies.get("all")).start_convo(message=message, extra_data=extra_data)
                 Log.Error("Something went wrong")
                 Log.Error(convo_request.text)
