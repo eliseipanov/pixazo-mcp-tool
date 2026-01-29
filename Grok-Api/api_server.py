@@ -1,4 +1,4 @@
-from fastapi      import FastAPI, HTTPException
+from fastapi      import FastAPI, HTTPException, Response
 from urllib.parse import urlparse, ParseResult
 from pydantic     import BaseModel
 from core         import Grok
@@ -12,6 +12,7 @@ import os
 import logging
 import time
 import secrets
+import json
 
 load_dotenv()
 
@@ -57,27 +58,19 @@ class ConversationRequest(BaseModel):
     extra_data: dict = None
 
 def format_proxy(proxy: str) -> str:
-    
-    if not proxy.startswith(("http://", "https://")):
-        proxy: str = "http://" + proxy
-    
-    try:
-        parsed: ParseResult = urlparse(proxy)
-
-        if parsed.scheme not in ("http", ""):
-            raise ValueError("Not http scheme")
-
-        if not parsed.hostname or not parsed.port:
-            raise ValueError("No url and port")
-
-        if parsed.username and parsed.password:
-            return f"http://{parsed.username}:{parsed.password}@{parsed.hostname}:{parsed.port}"
-        
-        else:
-            return f"http://{parsed.hostname}:{parsed.port}"
-    
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid proxy format: {str(e)}")
+    """
+    Format proxy string. Supports both HTTP and SOCKS5 proxies.
+    For SOCKS5 proxies, returns as-is since curl_cffi handles them.
+    """
+    if proxy.startswith("socks5://"):
+        # SOCKS5 proxy - return as-is for curl_cffi
+        return proxy
+    elif proxy.startswith(("http://", "https://")):
+        # HTTP proxy - return as-is
+        return proxy
+    else:
+        # Assume SOCKS5 if no scheme
+        return f"socks5://{proxy}"
 
 @app.get("/v1/models")
 async def get_models(api_key: str = Depends(get_api_key)):
@@ -124,13 +117,69 @@ async def chat_completions(request: ChatCompletionRequest, api_key: str = Depend
     full_message = context + f"User: {user_message}"
 
     try:
-        # Get proxy from environment
-        proxy = os.getenv('SOCKS5', None)
-        if proxy:
-            proxy = format_proxy(proxy)
+        # TEMPORARILY DISABLE PROXY FOR TESTING
+        proxy = None
+        # proxy_env = os.getenv('SOCKS5', None)
+        # if proxy_env:
+        #     proxy = format_proxy(proxy_env)
+        # else:
+        #     proxy = None
 
         logging.info(f"Processing chat completion with model: {request.model}")
         grok_response = Grok(request.model, proxy).start_convo(full_message)
+
+        # Log the raw response for debugging
+        logging.debug(f"Grok response: {grok_response}")
+
+        # Check if Grok returned an error
+        if "error" in grok_response:
+            logging.error(f"Grok API error: {grok_response['error']}")
+            # Handle both string and dict error formats
+            error_data = grok_response['error']
+            if isinstance(error_data, str):
+                # Try to parse JSON string error
+                try:
+                    import json
+                    error_dict = json.loads(error_data)
+                    error_message = error_dict.get('error', {}).get('message', 'Unknown error')
+                except (json.JSONDecodeError, KeyError):
+                    error_message = str(error_data)
+            elif isinstance(error_data, dict):
+                error_message = error_data.get('error', {}).get('message', error_data.get('message', 'Unknown error'))
+            else:
+                error_message = str(error_data)
+
+            # Return error as valid chat completion response instead of throwing exception
+            response_id = f"chatcmpl-{secrets.token_hex(16)}"
+            created = int(time.time())
+
+            response_data = {
+                "id": response_id,
+                "object": "chat.completion",
+                "created": created,
+                "model": request.model,
+                "choices": [{
+                    "index": 0,
+                    "message": {
+                        "role": "assistant",
+                        "content": f"Grok API Error: {error_message}"
+                    },
+                    "finish_reason": "stop"
+                }],
+                "usage": {
+                    "prompt_tokens": 0,
+                    "completion_tokens": 0,
+                    "total_tokens": 0
+                }
+            }
+
+            return Response(content=json.dumps(response_data), media_type="application/json")
+
+        # Check if we have a valid response
+        response_content = grok_response.get("response", "")
+        if not response_content:
+            logging.error("No response content from Grok")
+            raise HTTPException(status_code=503, detail="No response from Grok API")
 
         # Format response in OpenAI style
         response_id = f"chatcmpl-{secrets.token_hex(16)}"
@@ -138,10 +187,10 @@ async def chat_completions(request: ChatCompletionRequest, api_key: str = Depend
 
         # Estimate token usage
         prompt_tokens = len(full_message.split()) * 1.3  # Rough estimate
-        completion_tokens = len(grok_response.get("response", "").split()) * 1.3
+        completion_tokens = len(response_content.split()) * 1.3
         total_tokens = prompt_tokens + completion_tokens
 
-        return {
+        response_data = {
             "id": response_id,
             "object": "chat.completion",
             "created": created,
@@ -150,7 +199,7 @@ async def chat_completions(request: ChatCompletionRequest, api_key: str = Depend
                 "index": 0,
                 "message": {
                     "role": "assistant",
-                    "content": grok_response.get("response", "")
+                    "content": response_content
                 },
                 "finish_reason": "stop"
             }],
@@ -160,6 +209,8 @@ async def chat_completions(request: ChatCompletionRequest, api_key: str = Depend
                 "total_tokens": int(total_tokens)
             }
         }
+
+        return Response(content=json.dumps(response_data), media_type="application/json")
 
     except Exception as e:
         logging.error(f"Error in chat completion: {str(e)}")

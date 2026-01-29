@@ -1,11 +1,17 @@
 import requests
+from core import Log, Grok
+from dotenv import load_dotenv
+import os
+from json import dumps
+
+proxy = os.getenv('SOCKS5')
 
 response = requests.post(
     "http://localhost:6969/ask",
     json={
-        "proxy": "https://127.0.0.1:16379",
+        "proxy": proxy,
         "message": "Hello, Grok!",
-        "model": "grok-3-fast",
+        "model": "grok-4",
         "extra_data": None
     }
 )

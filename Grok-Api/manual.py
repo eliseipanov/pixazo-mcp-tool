@@ -7,11 +7,11 @@ proxy = os.getenv('SOCKS5')
 
 load_dotenv()
 
-message1: str = "Hey how are you??"
+message1: str = "Tell me a joke as you are a pirate"
 Log.Info("USER: " + message1)
 data1 = Grok(proxy).start_convo(message1, extra_data=None)
 Log.Info("GROK: " + data1["response"])
-
+""" 
 message2: str = "cool stuff"
 Log.Info("USER: " + message2)
 data2 = Grok(proxy).start_convo(message2, extra_data=data1["extra_data"])
@@ -30,4 +30,4 @@ Log.Info("GROK: " + data4["response"])
 message5: str = "And now the 5th omg"
 Log.Info("USER: " + message5)
 data5 = Grok(proxy).start_convo(message5, extra_data=data4["extra_data"])
-Log.Info("GROK: " + data5["response"])
+Log.Info("GROK: " + data5["response"]) """

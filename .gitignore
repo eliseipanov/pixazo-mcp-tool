@@ -36,3 +36,5 @@ build/
 # We are keeping reports/ and sprints/ for now as checkpoints, but if they become messy:
 # reports/
 # sprints/
+Grok-Api/core/mappings/grok.json
+Grok-Api/core/mappings/txid.json
