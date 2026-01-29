@@ -15,9 +15,14 @@ responses>=0.23.0
 pytest-mock>=3.11.1
 mcp>=1.0.0
 python-dotenv
+# Grok-Api
 curl_cffi
 fastapi
 uvicorn
 coincurve
 beautifulsoup4
 colorama
+python-jose[cryptography] 
+passlib[bcrypt] 
+python-multipart
+pysqlite3

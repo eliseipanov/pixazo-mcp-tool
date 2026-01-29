@@ -5,10 +5,48 @@ from core         import Grok
 from uvicorn      import run
 
 
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.security import APIKeyHeader
+from core.models import Models
+from db import validate_api_key
+
+from dotenv import load_dotenv
+import os
+import logging
+
+load_dotenv()
+
+DEBUG = os.getenv('DEBUG', 'false').lower() == 'true'
+
+logging.basicConfig(
+    level=logging.DEBUG if DEBUG else logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('/var/www/pixazo/logs/Grok-Api.log'),
+        logging.StreamHandler()
+    ]
+)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('/var/www/pixazo/logs/Grok-Api.log'),
+        logging.StreamHandler()
+    ]
+)
+
 app = FastAPI()
 
+api_key_header = APIKeyHeader(name="X-API-KEY", auto_error=False)
+
+async def get_api_key(api_key: str = Depends(api_key_header)):
+    if not api_key or not validate_api_key(api_key):
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
+    return api_key
+
 class ConversationRequest(BaseModel):
-    proxy: str
+    proxy: str = None
     message: str
     model: str = "grok-3-auto"
     extra_data: dict = None
@@ -36,8 +74,9 @@ def format_proxy(proxy: str) -> str:
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid proxy format: {str(e)}")
 
-@app.post("/ask")
-async def create_conversation(request: ConversationRequest):
+@app.get("/v1/models")
+async def get_models(api_key: str = Depends(get_api_key)):
+    return Models.get_models()
     if not request.proxy or not request.message:
         raise HTTPException(status_code=400, detail="Proxy and message are required")
     

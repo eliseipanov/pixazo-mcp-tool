@@ -1,7 +1,11 @@
 from core import Log, Grok
+from dotenv import load_dotenv
+import os
 from json import dumps
 
-proxy = "socks5://user:pass@ip:port"
+proxy = os.getenv('SOCKS5')
+
+load_dotenv()
 
 message1: str = "Hey how are you??"
 Log.Info("USER: " + message1)

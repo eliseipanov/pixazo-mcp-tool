@@ -1,4 +1,6 @@
 from core        import Log, Run, Utils, Parser, Signature, Anon, Headers
+from dotenv import load_dotenv
+import os
 from curl_cffi   import requests, CurlMime
 from dataclasses import dataclass, field
 from bs4         import BeautifulSoup
