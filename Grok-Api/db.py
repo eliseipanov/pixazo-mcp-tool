@@ -1,9 +1,16 @@
 import sqlite3
+import logging
 from datetime import datetime, timedelta
 import secrets
+import os
+
+# Get the directory of the current file
+DB_DIR = os.path.dirname(os.path.abspath(__file__))
+# DB_PATH = os.path.join(DB_DIR, 'api_users.db')
+DB_PATH = "/var/www/pixazo/data/api_users.db"
 
 # Initialize the database
-conn = sqlite3.connect('api_users.db')
+conn = sqlite3.connect(DB_PATH)
 cursor = conn.cursor()
 
 # Create the api_users table if it doesn't exist
@@ -37,6 +44,9 @@ def add_api_key(expiration_days=None):
 
 # Function to validate an API key
 def validate_api_key(api_key):
+    logging.debug(f"Validating API key: {api_key}")
+    logging.debug(f"Validating API key: {api_key}")
+    logging.debug(f"Validating API key: {api_key}")
     cursor.execute(
         "SELECT expiring_date FROM api_users WHERE api_key = ?",
         (api_key,)
@@ -44,14 +54,21 @@ def validate_api_key(api_key):
     result = cursor.fetchone()
     
     if not result:
+        logging.error(f"API key {api_key} not found in database")
+        logging.debug(f"API key {api_key} not found in database")
         return False
     
     expiring_date = result[0]
+    logging.debug(f"Found API key {api_key} with expiration date: {expiring_date}")
+    logging.debug(f"Found API key {api_key} with expiration date: {expiring_date}")
     if expiring_date:
-        if datetime.now() > datetime.fromisoformat(expiring_date):
+        if expiring_date and datetime.now() > datetime.fromisoformat(expiring_date):
+            logging.error(f"API key {api_key} has expired")
+            logging.debug(f"API key {api_key} has expired")
             return False
     
     return True
+    logging.debug(f"API key {api_key} is valid")
 
 # Close the database connection when done
 # conn.close()

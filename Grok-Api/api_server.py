@@ -38,14 +38,20 @@ logging.basicConfig(
 
 app = FastAPI()
 
-api_key_header = APIKeyHeader(name="X-API-KEY", auto_error=False)
+api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
 
 async def get_api_key(api_key: str = Depends(api_key_header)):
+    logging.debug(f"Received API key: {api_key}")
+    if api_key and api_key.startswith("Bearer "):
+        api_key = api_key[7:]
     if not api_key or not validate_api_key(api_key):
+        logging.error(f"Invalid or missing API key: {api_key}")
+        logging.error(f"Invalid or missing API key: {api_key}")
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
     return api_key
 
 class ConversationRequest(BaseModel):
+    proxy: str = None
     proxy: str = None
     message: str
     model: str = "grok-3-auto"
@@ -76,6 +82,8 @@ def format_proxy(proxy: str) -> str:
 
 @app.get("/v1/models")
 async def get_models(api_key: str = Depends(get_api_key)):
+    logging.info(f"GET /v1/models called with API key: {api_key}")
+async def get_models(api_key: str = Depends(get_api_key)):
     return Models.get_models()
     if not request.proxy or not request.message:
         raise HTTPException(status_code=400, detail="Proxy and message are required")
@@ -83,6 +91,7 @@ async def get_models(api_key: str = Depends(get_api_key)):
     proxy = format_proxy(request.proxy)
     
     try:
+        logging.info(f"Processing request with proxy: {request.proxy}, message: {request.message}, model: {request.model}")
         answer: dict = Grok(request.model, proxy).start_convo(request.message, request.extra_data)
 
         return {
