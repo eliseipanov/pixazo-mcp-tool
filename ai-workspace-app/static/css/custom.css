@@ -1,0 +1,16 @@
+/* Matte dark texture simulation */
+   .canvas-area {
+       background: #0f0f0f url('../img/matte-bg.jpg') repeat;  /* optional small texture ~100×100 px */
+       background-size: 200px;
+   }
+
+   .sidebar {
+       border-right: 1px solid #333 !important;
+   }
+
+   /* Desktop-first: hide sidebar on <1024px for now (later responsive offcanvas) */
+   @media (max-width: 1023px) {
+       .sidebar {
+           display: none;  /* temporary – will become offcanvas later */
+       }
+   }

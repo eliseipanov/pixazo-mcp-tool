@@ -35,9 +35,9 @@ class Grok:
         self.c_run: int = 0
         self.keys: dict = Anon.generate_keys()
         if proxy:
-                    self.session.proxies = {
-                        "all": "socks5://user:pass@ip:port"
-                    }
+            self.session.proxies = {
+                "all": proxy
+            }
     
     def _load(self, extra_data: dict = None) -> None:
         

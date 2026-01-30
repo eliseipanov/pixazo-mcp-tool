@@ -26,3 +26,5 @@ python-jose[cryptography]
 passlib[bcrypt] 
 python-multipart
 pysqlite3
+pysocks
+flask

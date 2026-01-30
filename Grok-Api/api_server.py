@@ -111,20 +111,38 @@ async def socks_check():
     try:
         # Check if SOCKS5 proxy is enabled
         use_socks = os.getenv('USE_SOCKS', 'false').lower() == 'true'
-        socks_proxy = os.getenv('SOCKS5', None)
+        socks_proxy = os.getenv('SOCKS', None)  # Changed from SOCKS5 to SOCKS
         
-        logging.info(f"SOCKS5 check requested - USE_SOCKS: {use_socks}, SOCKS5: {socks_proxy}")
+        # Debug: Log all environment variables
+        logging.info(f"SOCKS5 check requested - USE_SOCKS: {use_socks}, SOCKS: {socks_proxy}")
+        logging.info(f"Current working directory: {os.getcwd()}")
+        logging.info(f"All environment variables: {dict(os.environ)}")
         
-        # Make request to jsonip.com to check IP address
+        # Try to load .env file explicitly
+        from dotenv import load_dotenv
+        env_path = os.path.join(os.path.dirname(__file__), '.env')
+        logging.info(f"Loading .env from: {env_path}")
+        load_dotenv(env_path)
+        
+        # Re-read environment variables after loading .env
+        use_socks = os.getenv('USE_SOCKS', 'false').lower() == 'true'
+        socks_proxy = os.getenv('SOCKS', None)  # Changed from SOCKS5 to SOCKS
+        logging.info(f"After loading .env - USE_SOCKS: {use_socks}, SOCKS: {socks_proxy}")
+        
+        # Use requests with pysocks for SOCKS5 proxy support
         import requests as http_requests
         
         # Configure proxy if SOCKS5 is enabled
         proxies = None
         if use_socks and socks_proxy:
+            proxy = format_proxy(socks_proxy)
             proxies = {
-                "all": socks_proxy
+                "http": proxy,
+                "https": proxy
             }
-            logging.info(f"Using SOCKS5 proxy for IP check: {socks_proxy}")
+            logging.info(f"Using SOCKS5 proxy for IP check: {proxy}")
+        else:
+            logging.warning(f"SOCKS5 proxy not configured - use_socks: {use_socks}, socks_proxy: {socks_proxy}")
         
         # Make request to jsonip.com
         response = http_requests.get('https://jsonip.com/', proxies=proxies, timeout=10)
@@ -136,7 +154,7 @@ async def socks_check():
             result = {
                 "status": "success",
                 "use_socks": use_socks,
-                "socks_proxy": socks_proxy,
+                "socks_proxy": format_proxy(socks_proxy) if use_socks and socks_proxy else None,
                 "ip_address": ip_data.get('ip', 'unknown'),
                 "location": ip_data.get('city', 'unknown') + ', ' + ip_data.get('country', 'unknown'),
                 "isp": ip_data.get('org', 'unknown'),
@@ -147,7 +165,7 @@ async def socks_check():
             result = {
                 "status": "error",
                 "use_socks": use_socks,
-                "socks_proxy": socks_proxy,
+                "socks_proxy": format_proxy(socks_proxy) if use_socks and socks_proxy else None,
                 "error": f"Failed to check IP address: HTTP {response.status_code}"
             }
         
@@ -155,10 +173,14 @@ async def socks_check():
     
     except Exception as e:
         logging.error(f"Error in SOCKS5 check: {str(e)}")
+        # Get proxy configuration for error response
+        use_socks = os.getenv('USE_SOCKS', 'false').lower() == 'true'
+        socks_proxy = os.getenv('SOCKS', None)  # Changed from SOCKS5 to SOCKS
+        
         result = {
             "status": "error",
-            "use_socks": os.getenv('USE_SOCKS', 'false'),
-            "socks_proxy": os.getenv('SOCKS5', None),
+            "use_socks": use_socks,
+            "socks_proxy": format_proxy(socks_proxy) if use_socks and socks_proxy else None,
             "error": str(e)
         }
         return Response(content=json.dumps(result, ensure_ascii=False), media_type="application/json", status_code=500)
@@ -207,12 +229,12 @@ async def chat_completions(request: ChatCompletionRequest, api_key: str = Depend
         use_socks = os.getenv('USE_SOCKS', 'false').lower() == 'true'
         
         if use_socks:
-            proxy_env = os.getenv('SOCKS5', None)
+            proxy_env = os.getenv('SOCKS', None)  # Changed from SOCKS5 to SOCKS
             if proxy_env:
                 proxy = format_proxy(proxy_env)
                 logging.info(f"Using SOCKS5 proxy: {proxy}")
             else:
-                logging.warning("USE_SOCKS is true but SOCKS5 environment variable is not set")
+                logging.warning("USE_SOCKS is true but SOCKS environment variable is not set")
                 proxy = None
         else:
             proxy = None
@@ -385,4 +407,4 @@ async def stream_response(tokens: list, model: str):
     yield "data: [DONE]\n\n"
 
 if __name__ == "__main__":
-    run("api_server:app", host="0.0.0.0", port=6969, workers=50)
+    run("api_server:app", host="0.0.0.0", port=6969, workers=5)

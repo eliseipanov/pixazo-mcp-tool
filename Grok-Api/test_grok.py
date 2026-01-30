@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import os
 from json import dumps
 
-proxy = os.getenv('SOCKS5')
+proxy = os.getenv('SOCKS')
 
 response = requests.post(
     "http://localhost:6969/ask",

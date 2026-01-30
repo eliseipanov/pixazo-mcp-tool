@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import os
 from json import dumps
 
-proxy = os.getenv('SOCKS5')
+proxy = os.getenv('SOCKS')
 
 load_dotenv()
 
