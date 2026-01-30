@@ -219,6 +219,31 @@ For quick testing, use the pre-configured test account:
 - **Username**: `testuser`
 - **Password**: `testpass123`
 
+## Troubleshooting
+
+If you experience issues with registration or login, see [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) for detailed troubleshooting steps.
+
+### Quick Debug
+
+Visit `/debug` endpoint to check your authentication status:
+```
+http://127.0.0.1:5000/debug
+```
+
+This will show:
+- Whether you're authenticated
+- Your user ID and username (if logged in)
+- Total number of users in database
+
+### Verify Database
+
+Run the database test script:
+```bash
+/var/www/pixazo/.venv/bin/python ai-workspace-app/test_db.py
+```
+
+This will verify the database is working and list all users.
+
 ## Notes
 
 - The application uses the virtual environment at `/var/www/pixazo/.venv/`

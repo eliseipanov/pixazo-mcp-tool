@@ -11,6 +11,12 @@ app.config['SECRET_KEY'] = SECRET_KEY
 app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = SQLALCHEMY_TRACK_MODIFICATIONS
 
+# Session configuration
+app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
+
 # Initialize database
 db.init_app(app)
 
@@ -23,6 +29,11 @@ login_manager.login_view = 'login'
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+
+# Create database tables
+with app.app_context():
+    db.create_all()
 
 
 @app.route('/')
@@ -38,6 +49,17 @@ def health():
     return {'status': 'ok'}, 200
 
 
+@app.route('/debug')
+def debug():
+    """Debug route to check authentication status"""
+    return {
+        'authenticated': current_user.is_authenticated,
+        'user_id': current_user.get_id() if current_user.is_authenticated else None,
+        'username': current_user.username if current_user.is_authenticated else None,
+        'user_count': User.query.count()
+    }
+
+
 # Authentication routes
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -48,11 +70,12 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+        remember = request.form.get('remember') == 'on'
         
         user = User.query.filter_by(username=username).first()
         
         if user and check_password_hash(user.password_hash, password):
-            login_user(user)
+            login_user(user, remember=remember)
             flash('Login successful!', 'success')
             next_page = request.args.get('next')
             return redirect(next_page or url_for('index'))
@@ -97,16 +120,21 @@ def register():
             return redirect(url_for('register'))
         
         # Create new user
-        user = User(
-            username=username,
-            email=email,
-            password_hash=generate_password_hash(password)
-        )
-        db.session.add(user)
-        db.session.commit()
-        
-        flash('Registration successful! Please login.', 'success')
-        return redirect(url_for('login'))
+        try:
+            user = User(
+                username=username,
+                email=email,
+                password_hash=generate_password_hash(password)
+            )
+            db.session.add(user)
+            db.session.commit()
+            
+            flash('Registration successful! Please login.', 'success')
+            return redirect(url_for('login'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Registration failed: {str(e)}', 'danger')
+            return redirect(url_for('register'))
     
     return render_template('auth/register.html')
 
