@@ -30,6 +30,9 @@
                     </p>
                     {% endif %}
                     <p class="card-text small text-muted">
+                        <i class="bi bi-cpu"></i> Model: <strong>{{ style.model|upper }}</strong>
+                    </p>
+                    <p class="card-text small text-muted">
                         <i class="bi bi-sliders"></i> CFG: {{ style.cfg_scale }} | Steps: {{ style.steps }}
                         {% if style.seed %} | Seed: {{ style.seed }}{% endif %}
                     </p>

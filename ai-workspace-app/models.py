@@ -71,6 +71,7 @@ class Style(db.Model):
     cfg_scale = db.Column(db.Float, default=7.0)
     steps = db.Column(db.Integer, default=20)
     seed = db.Column(db.Integer, nullable=True)
+    model = db.Column(db.String(50), default='sdxl')  # 'sdxl' or 'flux'
     workspace_id = db.Column(db.Integer, db.ForeignKey('workspaces.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

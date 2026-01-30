@@ -26,12 +26,20 @@
                             <textarea class="form-control bg-dark text-light border-secondary" id="negative_prompt" name="negative_prompt" rows="3">{{ style.negative_prompt }}</textarea>
                         </div>
                         <div class="row">
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-4 mb-3">
+                                <label for="model" class="form-label">Model <span class="text-danger">*</span></label>
+                                <select class="form-select bg-dark text-light border-secondary" id="model" name="model" required>
+                                    <option value="sdxl" {% if style.model == 'sdxl' %}selected{% endif %}>SDXL (Stable Diffusion XL)</option>
+                                    <option value="flux" {% if style.model == 'flux' %}selected{% endif %}>Flux Klein</option>
+                                </select>
+                                <small class="text-muted">Choose AI model for generation</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
                                 <label for="cfg_scale" class="form-label">CFG Scale</label>
                                 <input type="number" class="form-control bg-dark text-light border-secondary" id="cfg_scale" name="cfg_scale" value="{{ style.cfg_scale }}" step="0.1" min="1" max="20">
                                 <small class="text-muted">How closely to follow the prompt (1-20)</small>
                             </div>
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <label for="steps" class="form-label">Steps</label>
                                 <input type="number" class="form-control bg-dark text-light border-secondary" id="steps" name="steps" value="{{ style.steps }}" min="1" max="150">
                                 <small class="text-muted">Number of denoising steps (1-150)</small>

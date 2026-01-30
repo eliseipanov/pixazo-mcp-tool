@@ -15,6 +15,8 @@ import time
 import secrets
 import json
 import asyncio
+import requests
+from datetime import datetime
 
 load_dotenv()
 
@@ -192,6 +194,17 @@ class ChatCompletionRequest(BaseModel):
     temperature: float = None
     stream: bool = False
 
+class ImageGenerationRequest(BaseModel):
+    """Request model for image generation"""
+    prompt: str
+    negative_prompt: str = None
+    width: int = 768
+    height: int = 1024
+    num_steps: int = 20
+    guidance_scale: float = 8.0
+    seed: int = -1  # -1 for random
+    model: str = "sdxl"  # "sdxl" or "flux"
+
 @app.post("/v1/chat/completions")
 async def chat_completions(request: ChatCompletionRequest, api_key: str = Depends(get_api_key)):
     logging.info(f"POST /v1/chat/completions called with API key: {api_key}, model: {request.model}")
@@ -367,6 +380,131 @@ async def chat_completions(request: ChatCompletionRequest, api_key: str = Depend
     except Exception as e:
         logging.error(f"Error in chat completion: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+# Image Generation Endpoints
+@app.post("/v1/generate/sdxl")
+async def generate_sdxl(request: ImageGenerationRequest, api_key: str = Depends(get_api_key)):
+    """Generate image using SDXL model"""
+    logging.info(f"SDXL generation request from {api_key}")
+    
+    # Load API key from environment
+    pixazo_api_key = os.getenv("PIXAZO_API_KEY")
+    if not pixazo_api_key:
+        raise HTTPException(status_code=500, detail="PIXAZO_API_KEY not configured")
+    
+    # Prepare request payload
+    payload = {
+        "prompt": request.prompt,
+        "width": request.width,
+        "height": request.height,
+        "num_steps": request.num_steps,
+        "guidance_scale": request.guidance_scale,
+        "seed": request.seed if request.seed != -1 else None
+    }
+    
+    if request.negative_prompt:
+        payload["negative_prompt"] = request.negative_prompt
+    
+    # SDXL endpoint
+    sdxl_url = "https://gateway.pixazo.ai/getImage/v1/getSDXLImage"
+    headers = {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache',
+        'Ocp-Apim-Subscription-Key': pixazo_api_key,
+    }
+    
+    try:
+        logging.info(f"Calling SDXL API with payload: {payload}")
+        response = requests.post(sdxl_url, headers=headers, json=payload, timeout=120)
+        
+        if response.status_code == 200:
+            response_data = response.json()
+            image_url = response_data.get('imageUrl')
+            
+            logging.info(f"SDXL generation successful: {image_url}")
+            
+            return {
+                "status": "success",
+                "model": "sdxl",
+                "image_url": image_url,
+                "parameters": payload
+            }
+        else:
+            error_msg = f"SDXL API error: HTTP {response.status_code}"
+            logging.error(error_msg)
+            raise HTTPException(status_code=response.status_code, detail=error_msg)
+            
+    except requests.exceptions.Timeout:
+        error_msg = "SDXL API timeout"
+        logging.error(error_msg)
+        raise HTTPException(status_code=504, detail=error_msg)
+    except Exception as e:
+        error_msg = f"SDXL generation error: {str(e)}"
+        logging.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
+
+
+@app.post("/v1/generate/flux")
+async def generate_flux(request: ImageGenerationRequest, api_key: str = Depends(get_api_key)):
+    """Generate image using Flux Klein model"""
+    logging.info(f"Flux generation request from {api_key}")
+    
+    # Load API key from environment
+    pixazo_api_key = os.getenv("PIXAZO_API_KEY")
+    if not pixazo_api_key:
+        raise HTTPException(status_code=500, detail="PIXAZO_API_KEY not configured")
+    
+    # Prepare request payload
+    payload = {
+        "prompt": request.prompt,
+        "width": request.width,
+        "height": request.height,
+        "num_steps": request.num_steps,
+        "guidance_scale": request.guidance_scale,
+        "seed": request.seed if request.seed != -1 else None
+    }
+    
+    if request.negative_prompt:
+        payload["negative_prompt"] = request.negative_prompt
+    
+    # Flux Klein endpoint (you can update this URL if different)
+    flux_url = "https://gateway.pixazo.ai/getImage/v1/getFluxImage"  # Update if different
+    headers = {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache',
+        'Ocp-Apim-Subscription-Key': pixazo_api_key,
+    }
+    
+    try:
+        logging.info(f"Calling Flux API with payload: {payload}")
+        response = requests.post(flux_url, headers=headers, json=payload, timeout=120)
+        
+        if response.status_code == 200:
+            response_data = response.json()
+            image_url = response_data.get('imageUrl')
+            
+            logging.info(f"Flux generation successful: {image_url}")
+            
+            return {
+                "status": "success",
+                "model": "flux",
+                "image_url": image_url,
+                "parameters": payload
+            }
+        else:
+            error_msg = f"Flux API error: HTTP {response.status_code}"
+            logging.error(error_msg)
+            raise HTTPException(status_code=response.status_code, detail=error_msg)
+            
+    except requests.exceptions.Timeout:
+        error_msg = "Flux API timeout"
+        logging.error(error_msg)
+        raise HTTPException(status_code=504, detail=error_msg)
+    except Exception as e:
+        error_msg = f"Flux generation error: {str(e)}"
+        logging.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
 
 async def stream_response(tokens: list, model: str):
     """Stream response in OpenAI-compatible SSE format using actual tokens from Grok"""

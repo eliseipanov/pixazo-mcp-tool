@@ -327,6 +327,7 @@ def create_style(workspace_id):
         cfg_scale = float(request.form.get('cfg_scale', 7.0))
         steps = int(request.form.get('steps', 20))
         seed = request.form.get('seed')
+        model = request.form.get('model', 'sdxl')  # Default to SDXL
         
         if not name or not positive_prompt:
             flash('Name and positive prompt are required', 'danger')
@@ -339,6 +340,7 @@ def create_style(workspace_id):
             cfg_scale=cfg_scale,
             steps=steps,
             seed=int(seed) if seed else None,
+            model=model,
             workspace_id=workspace_id
         )
         db.session.add(style)
@@ -369,7 +371,9 @@ def edit_style(workspace_id, style_id):
         style.cfg_scale = float(request.form.get('cfg_scale', 7.0))
         style.steps = int(request.form.get('steps', 20))
         seed = request.form.get('seed')
+        model = request.form.get('model', 'sdxl')
         style.seed = int(seed) if seed else None
+        style.model = model
         
         db.session.commit()
         flash('Style updated successfully', 'success')

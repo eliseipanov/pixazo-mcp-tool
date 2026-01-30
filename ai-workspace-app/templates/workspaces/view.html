@@ -43,6 +43,7 @@
                                     <h6 class="mb-1">{{ style.name }}</h6>
                                     <p class="mb-1 small text-muted">{{ style.positive_prompt[:100] }}{% if style.positive_prompt|length > 100 %}...{% endif %}</p>
                                     <small class="text-muted">
+                                        <i class="bi bi-cpu"></i> Model: <strong>{{ style.model|upper }}</strong> | 
                                         CFG: {{ style.cfg_scale }} | Steps: {{ style.steps }}
                                         {% if style.seed %} | Seed: {{ style.seed }}{% endif %}
                                     </small>
