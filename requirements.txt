@@ -28,3 +28,6 @@ python-multipart
 pysqlite3
 pysocks
 flask
+flask-sqlalchemy
+flask-login
+flask-admin

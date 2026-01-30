@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Create Style - {{ workspace.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card bg-dark border-secondary">
+                <div class="card-header border-secondary">
+                    <h4 class="mb-0"><i class="bi bi-sliders"></i> Create New Style</h4>
+                    <small class="text-muted">Workspace: {{ workspace.name }}</small>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Style Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control bg-dark text-light border-secondary" id="name" name="name" required autofocus>
+                        </div>
+                        <div class="mb-3">
+                            <label for="positive_prompt" class="form-label">Positive Prompt <span class="text-danger">*</span></label>
+                            <textarea class="form-control bg-dark text-light border-secondary" id="positive_prompt" name="positive_prompt" rows="4" required placeholder="Describe what you want to see in the generated image..."></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="negative_prompt" class="form-label">Negative Prompt</label>
+                            <textarea class="form-control bg-dark text-light border-secondary" id="negative_prompt" name="negative_prompt" rows="3" placeholder="Describe what you want to avoid in the generated image..."></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="cfg_scale" class="form-label">CFG Scale</label>
+                                <input type="number" class="form-control bg-dark text-light border-secondary" id="cfg_scale" name="cfg_scale" value="7.0" step="0.1" min="1" max="20">
+                                <small class="text-muted">How closely to follow the prompt (1-20)</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="steps" class="form-label">Steps</label>
+                                <input type="number" class="form-control bg-dark text-light border-secondary" id="steps" name="steps" value="20" min="1" max="150">
+                                <small class="text-muted">Number of denoising steps (1-150)</small>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="seed" class="form-label">Seed (optional)</label>
+                            <input type="number" class="form-control bg-dark text-light border-secondary" id="seed" name="seed" placeholder="Leave empty for random">
+                            <small class="text-muted">Fixed seed for reproducible results</small>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('list_styles', workspace_id=workspace.id) }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg"></i> Create Style
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Edit {{ workspace.name }} - AI Workspace{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card bg-dark border-secondary">
+                <div class="card-header border-secondary">
+                    <h4 class="mb-0"><i class="bi bi-pencil"></i> Edit Workspace</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Workspace Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control bg-dark text-light border-secondary" id="name" name="name" value="{{ workspace.name }}" required autofocus>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control bg-dark text-light border-secondary" id="description" name="description" rows="3">{{ workspace.description }}</textarea>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('view_workspace', workspace_id=workspace.id) }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg"></i> Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Themes - AI Workspace{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Themes</h2>
+        <a href="{{ url_for('create_theme') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> New Theme
+        </a>
+    </div>
+
+    {% if themes %}
+    <div class="row">
+        {% for theme in themes %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card bg-dark border-secondary h-100">
+                <div class="card-body">
+                    <h5 class="card-title">{{ theme.name }}</h5>
+                    {% if theme.description %}
+                    <p class="card-text text-muted">{{ theme.description }}</p>
+                    {% endif %}
+                    <p class="card-text small text-muted">
+                        <i class="bi bi-chat-quote"></i> {{ theme.base_prompt[:100] }}{% if theme.base_prompt|length > 100 %}...{% endif %}
+                    </p>
+                    <p class="card-text small text-muted">
+                        <i class="bi bi-folder"></i> {{ theme.workspaces|length }} workspaces
+                    </p>
+                </div>
+                <div class="card-footer bg-dark border-secondary">
+                    <div class="btn-group w-100" role="group">
+                        <a href="{{ url_for('edit_theme', theme_id=theme.id) }}" class="btn btn-outline-light btn-sm">
+                            <i class="bi bi-pencil"></i> Edit
+                        </a>
+                        <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal{{ theme.id }}">
+                            <i class="bi bi-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="bi bi-palette display-1 text-muted"></i>
+        <h3 class="mt-3 text-muted">No themes yet</h3>
+        <p class="text-muted">Create themes to define base prompts for your workspaces</p>
+        <a href="{{ url_for('create_theme') }}" class="btn btn-primary btn-lg">
+            <i class="bi bi-plus-lg"></i> Create Theme
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+{% for theme in themes %}
+<div class="modal fade" id="deleteModal{{ theme.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">Delete Theme</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong>{{ theme.name }}</strong>?</p>
+                {% if theme.workspaces %}
+                <p class="text-warning small">This theme is used by {{ theme.workspaces|length }} workspace(s). Those workspaces will no longer have a theme assigned.</p>
+                {% endif %}
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('delete_theme', theme_id=theme.id) }}" method="POST">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

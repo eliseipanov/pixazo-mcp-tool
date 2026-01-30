@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Workspaces - AI Workspace{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>My Workspaces</h2>
+        <a href="{{ url_for('create_workspace') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> New Workspace
+        </a>
+    </div>
+
+    {% if workspaces %}
+    <div class="row">
+        {% for workspace in workspaces %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card bg-dark border-secondary h-100">
+                <div class="card-body">
+                    <h5 class="card-title">{{ workspace.name }}</h5>
+                    {% if workspace.description %}
+                    <p class="card-text text-muted">{{ workspace.description }}</p>
+                    {% endif %}
+                    <p class="card-text small text-muted">
+                        <i class="bi bi-clock"></i> Updated: {{ workspace.updated_at.strftime('%Y-%m-%d %H:%M') }}
+                    </p>
+                    <p class="card-text small text-muted">
+                        <i class="bi bi-images"></i> {{ workspace.generated_images|length }} images
+                    </p>
+                </div>
+                <div class="card-footer bg-dark border-secondary">
+                    <div class="btn-group w-100" role="group">
+                        <a href="{{ url_for('view_workspace', workspace_id=workspace.id) }}" class="btn btn-outline-light btn-sm">
+                            <i class="bi bi-eye"></i> View
+                        </a>
+                        <a href="{{ url_for('edit_workspace', workspace_id=workspace.id) }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-pencil"></i> Edit
+                        </a>
+                        <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal{{ workspace.id }}">
+                            <i class="bi bi-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="bi bi-folder-plus display-1 text-muted"></i>
+        <h3 class="mt-3 text-muted">No workspaces yet</h3>
+        <p class="text-muted">Create your first workspace to start generating AI images</p>
+        <a href="{{ url_for('create_workspace') }}" class="btn btn-primary btn-lg">
+            <i class="bi bi-plus-lg"></i> Create Workspace
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+{% for workspace in workspaces %}
+<div class="modal fade" id="deleteModal{{ workspace.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">Delete Workspace</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong>{{ workspace.name }}</strong>?</p>
+                <p class="text-danger small">This will also delete all associated styles, chat messages, and generated images. This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('delete_workspace', workspace_id=workspace.id) }}" method="POST">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}{{ workspace.name }} - AI Workspace{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>{{ workspace.name }}</h2>
+            {% if workspace.description %}
+            <p class="text-muted mb-0">{{ workspace.description }}</p>
+            {% endif %}
+        </div>
+        <div>
+            <a href="{{ url_for('list_workspaces') }}" class="btn btn-secondary me-2">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+            <a href="{{ url_for('edit_workspace', workspace_id=workspace.id) }}" class="btn btn-outline-light me-2">
+                <i class="bi bi-pencil"></i> Edit
+            </a>
+            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                <i class="bi bi-trash"></i> Delete
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card bg-dark border-secondary h-100">
+                <div class="card-header border-secondary d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-palette"></i> Styles</h5>
+                    <a href="{{ url_for('create_style', workspace_id=workspace.id) }}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-lg"></i> Add Style
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if workspace.styles %}
+                    <div class="list-group list-group-flush">
+                        {% for style in workspace.styles %}
+                        <div class="list-group-item bg-dark text-light border-secondary">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">{{ style.name }}</h6>
+                                    <p class="mb-1 small text-muted">{{ style.positive_prompt[:100] }}{% if style.positive_prompt|length > 100 %}...{% endif %}</p>
+                                    <small class="text-muted">
+                                        CFG: {{ style.cfg_scale }} | Steps: {{ style.steps }}
+                                        {% if style.seed %} | Seed: {{ style.seed }}{% endif %}
+                                    </small>
+                                </div>
+                                <div class="btn-group">
+                                    <a href="{{ url_for('edit_style', workspace_id=workspace.id, style_id=style.id) }}" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteStyleModal{{ style.id }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-3">No styles yet. Create your first style to start generating images.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card bg-dark border-secondary h-100">
+                <div class="card-header border-secondary">
+                    <h5 class="mb-0"><i class="bi bi-chat-dots"></i> Chat History</h5>
+                </div>
+                <div class="card-body">
+                    {% if workspace.chat_messages %}
+                    <div class="chat-messages" style="max-height: 400px; overflow-y: auto;">
+                        {% for message in workspace.chat_messages %}
+                        <div class="mb-3 {% if message.role == 'user' %}text-end{% else %}text-start{% endif %}">
+                            <span class="badge {% if message.role == 'user' %}bg-primary{% elif message.role == 'assistant' %}bg-success{% else %}bg-secondary{% endif %}">
+                                {{ message.role|capitalize }}
+                            </span>
+                            <p class="mb-1 mt-1">{{ message.content }}</p>
+                            <small class="text-muted">{{ message.timestamp.strftime('%H:%M') }}</small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-3">No chat messages yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card bg-dark border-secondary">
+        <div class="card-header border-secondary">
+            <h5 class="mb-0"><i class="bi bi-images"></i> Generated Images ({{ workspace.generated_images|length }})</h5>
+        </div>
+        <div class="card-body">
+            {% if workspace.generated_images %}
+            <div class="row">
+                {% for image in workspace.generated_images %}
+                <div class="col-md-4 col-lg-3 mb-3">
+                    <div class="card bg-dark border-secondary">
+                        {% if image.thumbnail_path %}
+                        <img src="{{ url_for('static', filename=image.thumbnail_path) }}" class="card-img-top" alt="Generated image">
+                        {% else %}
+                        <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 200px;">
+                            <i class="bi bi-image display-4 text-muted"></i>
+                        </div>
+                        {% endif %}
+                        <div class="card-body p-2">
+                            <p class="card-text small text-muted mb-1">{{ image.prompt[:50] }}...</p>
+                            <small class="text-muted">{{ image.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-muted text-center py-5">No images generated yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Delete Workspace Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">Delete Workspace</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong>{{ workspace.name }}</strong>?</p>
+                <p class="text-danger small">This will also delete all associated styles, chat messages, and generated images. This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('delete_workspace', workspace_id=workspace.id) }}" method="POST">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% for style in workspace.styles %}
+<div class="modal fade" id="deleteStyleModal{{ style.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">Delete Style</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong>{{ style.name }}</strong>?</p>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('delete_style', workspace_id=workspace.id, style_id=style.id) }}" method="POST">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

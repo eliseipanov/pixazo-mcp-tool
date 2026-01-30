@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Styles - {{ workspace.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>Styles</h2>
+            <p class="text-muted mb-0">Workspace: {{ workspace.name }}</p>
+        </div>
+        <a href="{{ url_for('create_style', workspace_id=workspace.id) }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> New Style
+        </a>
+    </div>
+
+    {% if styles %}
+    <div class="row">
+        {% for style in styles %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card bg-dark border-secondary h-100">
+                <div class="card-body">
+                    <h5 class="card-title">{{ style.name }}</h5>
+                    <p class="card-text small text-muted">
+                        <strong>Positive:</strong> {{ style.positive_prompt[:80] }}{% if style.positive_prompt|length > 80 %}...{% endif %}
+                    </p>
+                    {% if style.negative_prompt %}
+                    <p class="card-text small text-muted">
+                        <strong>Negative:</strong> {{ style.negative_prompt[:80] }}{% if style.negative_prompt|length > 80 %}...{% endif %}
+                    </p>
+                    {% endif %}
+                    <p class="card-text small text-muted">
+                        <i class="bi bi-sliders"></i> CFG: {{ style.cfg_scale }} | Steps: {{ style.steps }}
+                        {% if style.seed %} | Seed: {{ style.seed }}{% endif %}
+                    </p>
+                    <p class="card-text small text-muted">
+                        <i class="bi bi-images"></i> {{ style.generated_images|length }} images
+                    </p>
+                </div>
+                <div class="card-footer bg-dark border-secondary">
+                    <div class="btn-group w-100" role="group">
+                        <a href="{{ url_for('edit_style', workspace_id=workspace.id, style_id=style.id) }}" class="btn btn-outline-light btn-sm">
+                            <i class="bi bi-pencil"></i> Edit
+                        </a>
+                        <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal{{ style.id }}">
+                            <i class="bi bi-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="bi bi-sliders display-1 text-muted"></i>
+        <h3 class="mt-3 text-muted">No styles yet</h3>
+        <p class="text-muted">Create styles to define generation parameters for this workspace</p>
+        <a href="{{ url_for('create_style', workspace_id=workspace.id) }}" class="btn btn-primary btn-lg">
+            <i class="bi bi-plus-lg"></i> Create Style
+        </a>
+    </div>
+    {% endif %}
+
+    <div class="mt-4">
+        <a href="{{ url_for('view_workspace', workspace_id=workspace.id) }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Workspace
+        </a>
+    </div>
+</div>
+
+{% for style in styles %}
+<div class="modal fade" id="deleteModal{{ style.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">Delete Style</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong>{{ style.name }}</strong>?</p>
+                {% if style.generated_images %}
+                <p class="text-warning small">This style has {{ style.generated_images|length }} generated image(s). Those images will remain but will no longer be associated with this style.</p>
+                {% endif %}
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('delete_style', workspace_id=workspace.id, style_id=style.id) }}" method="POST">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
