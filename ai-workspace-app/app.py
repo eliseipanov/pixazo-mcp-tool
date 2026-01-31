@@ -664,6 +664,7 @@ def generate_image(workspace_id):
         # Generate unique filename
         filename = f"gen_{uuid.uuid4().hex[:16]}.png"
         local_path = os.path.join(workspace_dir, filename)
+        thumbnail_path = None
         
         # Download image
         if not download_image(image_url, local_path):
@@ -678,7 +679,7 @@ def generate_image(workspace_id):
         generated_image = GeneratedImage(
             workspace_id=workspace_id,
             path=local_path,
-            thumbnail_path=thumbnail_path if os.path.exists(thumbnail_path) else None,
+            thumbnail_path=thumbnail_path if thumbnail_path and os.path.exists(thumbnail_path) else None,
             prompt=final_prompt,
             negative_prompt=negative_prompt,
             model=model.name,
