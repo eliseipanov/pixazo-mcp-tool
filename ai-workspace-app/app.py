@@ -6,6 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from config import SQLALCHEMY_DATABASE_URI, SQLALCHEMY_TRACK_MODIFICATIONS, SECRET_KEY, GROK_API_URL, GROK_API_KEY
 from models import db, User, Workspace, Theme, Style, ChatMessage, GeneratedImage, GenerativeModel, SavedPrompt, generate_slug
 from api_client import GrokAPIClient, build_generation_prompt
+from image_utils import create_thumbnail, get_thumbnail_path
 import logging
 import os
 import requests
@@ -95,6 +96,30 @@ def serve_generated_image(filename):
         return "Access denied", 403
     
     # Build the full path
+    full_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'generated', username, workspacename)
+    
+    return send_from_directory(full_path, image_filename)
+
+
+@app.route('/data/generated/<path:filename>/thumbnail')
+@login_required
+def serve_thumbnail(filename):
+    """Serve thumbnail images from /var/www/pixazo/data/generated/ directory"""
+    # Extract username and workspace from path
+    path_parts = filename.split('/')
+    
+    if len(path_parts) < 3:
+        return "Invalid path", 400
+    
+    username = path_parts[0]
+    workspacename = path_parts[1]
+    image_filename = '/'.join(path_parts[2:])
+    
+    # Check if user has access to this image
+    if current_user.username != username:
+        return "Access denied", 403
+    
+    # Build full path
     full_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'generated', username, workspacename)
     
     return send_from_directory(full_path, image_filename)
@@ -642,11 +667,16 @@ def generate_image(workspace_id):
         if not download_image(image_url, local_path):
             logger.warning(f"Failed to download image, using remote URL: {image_url}")
             local_path = image_url  # Fallback to remote URL
+        else:
+            # Create thumbnail
+            thumbnail_path = get_thumbnail_path(local_path)
+            create_thumbnail(local_path, thumbnail_path)
         
         # Save generated image to database
         generated_image = GeneratedImage(
             workspace_id=workspace_id,
             path=local_path,
+            thumbnail_path=thumbnail_path if os.path.exists(thumbnail_path) else None,
             prompt=final_prompt,
             negative_prompt=negative_prompt,
             model=model.name,
@@ -1027,6 +1057,70 @@ def get_workspace_styles(workspace_id):
             'seed': style.seed
         } for style in workspace.styles]
     })
+
+
+# Image Action API Routes
+@app.route('/api/images/<int:image_id>', methods=['GET'])
+@login_required
+def get_image_info(image_id):
+    """Get detailed information about a generated image"""
+    image = GeneratedImage.query.get_or_404(image_id)
+    
+    # Check ownership
+    workspace = Workspace.query.get(image.workspace_id)
+    if not workspace or workspace.user_id != current_user.id:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    return jsonify({
+        'id': image.id,
+        'path': image.path,
+        'thumbnail_path': image.thumbnail_path,
+        'prompt': image.prompt,
+        'negative_prompt': image.negative_prompt,
+        'model': image.model,
+        'width': image.width,
+        'height': image.height,
+        'num_steps': image.num_steps,
+        'guidance_scale': image.guidance_scale,
+        'seed': image.seed,
+        'theme_id': image.theme_id,
+        'style_id': image.style_id,
+        'created_at': image.created_at.isoformat() if image.created_at else None
+    })
+
+
+@app.route('/api/images/<int:image_id>', methods=['DELETE'])
+@login_required
+def delete_image(image_id):
+    """Delete a generated image"""
+    image = GeneratedImage.query.get_or_404(image_id)
+    
+    # Check ownership
+    workspace = Workspace.query.get(image.workspace_id)
+    if not workspace or workspace.user_id != current_user.id:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        # Delete image file
+        if image.path and os.path.exists(image.path):
+            os.remove(image.path)
+            logger.info(f"Deleted image file: {image.path}")
+        
+        # Delete thumbnail file
+        if image.thumbnail_path and os.path.exists(image.thumbnail_path):
+            os.remove(image.thumbnail_path)
+            logger.info(f"Deleted thumbnail file: {image.thumbnail_path}")
+        
+        # Delete database record
+        db.session.delete(image)
+        db.session.commit()
+        
+        logger.info(f"Deleted image {image_id}")
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        logger.error(f"Error deleting image: {str(e)}", exc_info=True)
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 
 # Context processor for templates
