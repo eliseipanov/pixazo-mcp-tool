@@ -157,6 +157,8 @@ class GenerativeModel(db.Model):
     max_steps = db.Column(db.Integer, default=50)
     min_guidance_scale = db.Column(db.Float, default=1.0)
     max_guidance_scale = db.Column(db.Float, default=20.0)
+    request_template = db.Column(db.Text, nullable=True)  # JSON template for API request
+    response_template = db.Column(db.Text, nullable=True)  # JSON template for parsing API response
     is_active = db.Column(db.Boolean, default=True)  # Enable/disable model
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

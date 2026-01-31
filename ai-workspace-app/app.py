@@ -647,7 +647,9 @@ def generate_image(workspace_id):
             num_steps=num_steps,
             guidance_scale=guidance_scale,
             seed=int(seed) if seed else -1,
-            pixazo_api_key=model.api_key
+            pixazo_api_key=model.api_key,
+            request_template=model.request_template,
+            response_template=model.response_template
         )
         
         if result.get('status') != 'success':

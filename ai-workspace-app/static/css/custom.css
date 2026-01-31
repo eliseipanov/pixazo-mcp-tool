@@ -130,9 +130,23 @@
     min-height: calc(100vh - 1rem);
 }
 
+.lightbox-modal {
+    max-width: 95vw;
+}
+
+.lightbox-modal .modal-body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+}
+
 #lightboxImage {
     max-height: 80vh;
+    max-width: 100%;
     object-fit: contain;
+    width: auto;
+    height: auto;
 }
 
 /* ==================== Main Content ==================== */
