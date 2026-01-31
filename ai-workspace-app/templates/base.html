@@ -30,6 +30,11 @@
                     <a class="nav-link text-light" href="{{ url_for('list_themes') }}">
                         <i class="bi bi-palette"></i> Themes
                     </a>
+                    {% if current_user.is_superuser %}
+                    <a class="nav-link text-light" href="{{ url_for('list_models') }}">
+                        <i class="bi bi-cpu"></i> Models
+                    </a>
+                    {% endif %}
                     {% endif %}
                 </nav>
 

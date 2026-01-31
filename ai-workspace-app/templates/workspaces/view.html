@@ -93,6 +93,124 @@
         </div>
     </div>
 
+    <!-- Image Generation Form -->
+    <div class="card bg-dark border-secondary mb-4">
+        <div class="card-header border-secondary">
+            <h5 class="mb-0"><i class="bi bi-magic"></i> Generate Image</h5>
+        </div>
+        <div class="card-body">
+            <form id="generateForm" method="POST" action="{{ url_for('generate_image', workspace_id=workspace.id) }}">
+                <div class="row">
+                    <!-- Saved Prompts Dropdown -->
+                    <div class="col-12 mb-3">
+                        <label for="saved_prompt_select" class="form-label">Load Saved Prompt</label>
+                        <select class="form-select bg-dark text-light border-secondary" id="saved_prompt_select">
+                            <option value="">-- Select Saved Prompt --</option>
+                        </select>
+                        <small class="text-muted">Select a previously saved prompt to load its settings</small>
+                    </div>
+
+                    <!-- Main Prompt -->
+                    <div class="col-12 mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <label for="main_prompt" class="form-label mb-0">Main Prompt <span class="text-danger">*</span></label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="save_prompt" name="save_prompt">
+                                <label class="form-check-label text-muted" for="save_prompt">
+                                    Save this prompt
+                                </label>
+                            </div>
+                        </div>
+                        <textarea class="form-control bg-dark text-light border-secondary" id="main_prompt" name="main_prompt" rows="3" required placeholder="Describe the image you want to generate..."></textarea>
+                        <small class="text-muted">The main description of your image. Theme (if selected) will be added before, and Style (if selected) will be added after this prompt.</small>
+                    </div>
+
+                    <!-- Negative Prompt -->
+                    <div class="col-12 mb-3">
+                        <label for="negative_prompt" class="form-label">Negative Prompt (Optional)</label>
+                        <textarea class="form-control bg-dark text-light border-secondary" id="negative_prompt" name="negative_prompt" rows="2" placeholder="Describe what to avoid in the image..."></textarea>
+                        <small class="text-muted">Elements to avoid in the generated image. Style negative prompt will be used if this is left empty.</small>
+                    </div>
+
+                    <!-- Theme Selection -->
+                    <div class="col-md-4 mb-3">
+                        <label for="theme_id" class="form-label">Theme (Optional)</label>
+                        <select class="form-select bg-dark text-light border-secondary" id="theme_id" name="theme_id">
+                            <option value="">-- No Theme --</option>
+                            {% for theme in themes %}
+                            <option value="{{ theme.id }}">{{ theme.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Added before main prompt</small>
+                    </div>
+
+                    <!-- Style Selection -->
+                    <div class="col-md-4 mb-3">
+                        <label for="style_id" class="form-label">Style (Optional)</label>
+                        <select class="form-select bg-dark text-light border-secondary" id="style_id" name="style_id">
+                            <option value="">-- No Style --</option>
+                            {% for style in workspace.styles %}
+                            <option value="{{ style.id }}" data-model="{{ style.model }}">{{ style.name }} ({{ style.model|upper }})</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Added after main prompt</small>
+                    </div>
+
+                    <!-- Model Selection -->
+                    <div class="col-md-4 mb-3">
+                        <label for="model_id" class="form-label">Model <span class="text-danger">*</span></label>
+                        <select class="form-select bg-dark text-light border-secondary" id="model_id" name="model_id" required>
+                            <option value="">-- Select Model --</option>
+                            <!-- Models will be loaded dynamically via JavaScript -->
+                        </select>
+                    </div>
+
+                    <!-- Advanced Parameters -->
+                    <div class="col-12 mb-3">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#advancedParams">
+                            <i class="bi bi-gear"></i> Advanced Parameters
+                        </button>
+                    </div>
+
+                    <div class="collapse" id="advancedParams">
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label for="width" class="form-label">Width</label>
+                                <input type="number" class="form-control bg-dark text-light border-secondary" id="width" name="width" value="768" min="256" max="1536">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="height" class="form-label">Height</label>
+                                <input type="number" class="form-control bg-dark text-light border-secondary" id="height" name="height" value="1024" min="256" max="2048">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="num_steps" class="form-label">Steps</label>
+                                <input type="number" class="form-control bg-dark text-light border-secondary" id="num_steps" name="num_steps" value="20" min="10" max="50">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="guidance_scale" class="form-label">Guidance Scale</label>
+                                <input type="number" class="form-control bg-dark text-light border-secondary" id="guidance_scale" name="guidance_scale" value="8.0" min="1.0" max="20.0" step="0.5">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="seed" class="form-label">Seed (Optional)</label>
+                                <input type="number" class="form-control bg-dark text-light border-secondary" id="seed" name="seed" placeholder="Leave empty for random">
+                                <small class="text-muted">Same seed = same result</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Generate Button -->
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary btn-lg" id="generateBtn">
+                            <i class="bi bi-magic"></i> Generate Image
+                        </button>
+                        <span id="generateStatus" class="ms-3"></span>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Generated Images -->
     <div class="card bg-dark border-secondary">
         <div class="card-header border-secondary">
             <h5 class="mb-0"><i class="bi bi-images"></i> Generated Images ({{ workspace.generated_images|length }})</h5>
@@ -103,23 +221,31 @@
                 {% for image in workspace.generated_images %}
                 <div class="col-md-4 col-lg-3 mb-3">
                     <div class="card bg-dark border-secondary">
-                        {% if image.thumbnail_path %}
-                        <img src="{{ url_for('static', filename=image.thumbnail_path) }}" class="card-img-top" alt="Generated image">
+                        {% if image.path %}
+                        <a href="{{ url_for('serve_generated_image', filename=image.path.replace('/var/www/pixazo/data/generated/', '')) }}" target="_blank">
+                            <img src="{{ url_for('serve_generated_image', filename=image.path.replace('/var/www/pixazo/data/generated/', '')) }}" class="card-img-top" alt="Generated image" style="height: 200px; object-fit: cover;">
+                        </a>
                         {% else %}
                         <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 200px;">
                             <i class="bi bi-image display-4 text-muted"></i>
                         </div>
                         {% endif %}
                         <div class="card-body p-2">
-                            <p class="card-text small text-muted mb-1">{{ image.prompt[:50] }}...</p>
-                            <small class="text-muted">{{ image.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                            <p class="card-text small text-muted mb-1">{{ image.prompt[:50] }}{% if image.prompt|length > 50 %}...{% endif %}</p>
+                            <small class="text-muted">
+                                <i class="bi bi-cpu"></i> {{ image.model|upper }} | 
+                                {{ image.width }}x{{ image.height }} | 
+                                Steps: {{ image.num_steps }} | 
+                                CFG: {{ image.guidance_scale }} | 
+                                {{ image.created_at.strftime('%Y-%m-%d %H:%M') }}
+                            </small>
                         </div>
                     </div>
                 </div>
                 {% endfor %}
             </div>
             {% else %}
-            <p class="text-muted text-center py-5">No images generated yet.</p>
+            <p class="text-muted text-center py-5">No images generated yet. Use the form above to generate your first image.</p>
             {% endif %}
         </div>
     </div>
@@ -168,4 +294,257 @@
     </div>
 </div>
 {% endfor %}
+
+<script>
+// Load models dynamically from API
+let availableModels = [];
+
+function loadModels() {
+    fetch('/api/models')
+        .then(response => response.json())
+        .then(data => {
+            availableModels = data.models;
+            const modelSelect = document.getElementById('model_id');
+            modelSelect.innerHTML = '<option value="">-- Select Model --</option>';
+            
+            availableModels.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model.id;
+                option.textContent = model.display_name;
+                option.dataset.defaultWidth = model.default_width;
+                option.dataset.defaultHeight = model.default_height;
+                option.dataset.defaultSteps = model.default_steps;
+                option.dataset.defaultGuidanceScale = model.default_guidance_scale;
+                option.dataset.maxWidth = model.max_width;
+                option.dataset.maxHeight = model.max_height;
+                option.dataset.minSteps = model.min_steps;
+                option.dataset.maxSteps = model.max_steps;
+                option.dataset.minGuidanceScale = model.min_guidance_scale;
+                option.dataset.maxGuidanceScale = model.max_guidance_scale;
+                modelSelect.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Error loading models:', error);
+        });
+}
+
+// Handle model selection to update parameter limits
+document.getElementById('model_id').addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    const model = availableModels.find(m => m.id == this.value);
+    
+    if (model) {
+        // Update default values
+        document.getElementById('width').value = model.default_width;
+        document.getElementById('height').value = model.default_height;
+        document.getElementById('num_steps').value = model.default_steps;
+        document.getElementById('guidance_scale').value = model.default_guidance_scale;
+        
+        // Update min/max attributes
+        document.getElementById('width').min = 256;
+        document.getElementById('width').max = model.max_width;
+        document.getElementById('height').min = 256;
+        document.getElementById('height').max = model.max_height;
+        document.getElementById('num_steps').min = model.min_steps;
+        document.getElementById('num_steps').max = model.max_steps;
+        document.getElementById('guidance_scale').min = model.min_guidance_scale;
+        document.getElementById('guidance_scale').max = model.max_guidance_scale;
+    }
+});
+
+// Handle style selection to auto-select model
+document.getElementById('style_id').addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    const modelName = selectedOption.getAttribute('data-model');
+    if (modelName) {
+        // Find model by name and select it
+        const model = availableModels.find(m => m.name === modelName);
+        if (model) {
+            document.getElementById('model_id').value = model.id;
+            // Trigger change event to update parameters
+            document.getElementById('model_id').dispatchEvent(new Event('change'));
+        }
+    }
+});
+
+// Handle form submission with AJAX
+document.getElementById('generateForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const form = this;
+    const formData = new FormData(form);
+    const generateBtn = document.getElementById('generateBtn');
+    const generateStatus = document.getElementById('generateStatus');
+    
+    // Disable button and show loading state
+    generateBtn.disabled = true;
+    generateBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Generating...';
+    generateStatus.innerHTML = '<span class="text-info"><i class="bi bi-hourglass-split"></i> Generating image, please wait...</span>';
+    
+    // Send AJAX request
+    fetch(form.action, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Success - reload page to show new image
+            generateStatus.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Image generated successfully!</span>';
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            // Error
+            generateStatus.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-circle"></i> ' + (data.error || 'Generation failed') + '</span>';
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = '<i class="bi bi-magic"></i> Generate Image';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        generateStatus.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-circle"></i> Network error. Please try again.</span>';
+        generateBtn.disabled = false;
+        generateBtn.innerHTML = '<i class="bi bi-magic"></i> Generate Image';
+    });
+});
+
+// Load saved prompts
+let savedPrompts = [];
+
+function loadSavedPrompts() {
+    fetch(`/api/workspaces/{{ workspace.id }}/saved-prompts`)
+        .then(response => response.json())
+        .then(data => {
+            savedPrompts = data.saved_prompts;
+            const savedPromptSelect = document.getElementById('saved_prompt_select');
+            savedPromptSelect.innerHTML = '<option value="">-- Select Saved Prompt --</option>';
+            
+            savedPrompts.forEach(sp => {
+                const option = document.createElement('option');
+                option.value = sp.id;
+                option.textContent = sp.name;
+                savedPromptSelect.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Error loading saved prompts:', error);
+        });
+}
+
+// Handle saved prompt selection
+document.getElementById('saved_prompt_select').addEventListener('change', function() {
+    const savedPromptId = this.value;
+    if (!savedPromptId) return;
+    
+    const savedPrompt = savedPrompts.find(sp => sp.id == savedPromptId);
+    if (savedPrompt) {
+        // Load prompt data into form
+        document.getElementById('main_prompt').value = savedPrompt.main_prompt;
+        document.getElementById('negative_prompt').value = savedPrompt.negative_prompt || '';
+        document.getElementById('theme_id').value = savedPrompt.theme_id || '';
+        document.getElementById('style_id').value = savedPrompt.style_id || '';
+        document.getElementById('model_id').value = savedPrompt.model_id || '';
+        document.getElementById('width').value = savedPrompt.width || '';
+        document.getElementById('height').value = savedPrompt.height || '';
+        document.getElementById('num_steps').value = savedPrompt.num_steps || '';
+        document.getElementById('guidance_scale').value = savedPrompt.guidance_scale || '';
+        document.getElementById('seed').value = savedPrompt.seed || '';
+        
+        // Trigger change events to update dependent fields
+        document.getElementById('model_id').dispatchEvent(new Event('change'));
+        document.getElementById('style_id').dispatchEvent(new Event('change'));
+    }
+});
+
+// Handle form submission with AJAX
+document.getElementById('generateForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const form = this;
+    const formData = new FormData(form);
+    const generateBtn = document.getElementById('generateBtn');
+    const generateStatus = document.getElementById('generateStatus');
+    const savePromptCheckbox = document.getElementById('save_prompt');
+    
+    // Check if prompt should be saved
+    if (savePromptCheckbox.checked) {
+        const promptName = prompt('Enter a name for this prompt:', 'Untitled');
+        if (promptName) {
+            // Save prompt first
+            const saveData = {
+                name: promptName,
+                main_prompt: formData.get('main_prompt'),
+                negative_prompt: formData.get('negative_prompt'),
+                theme_id: formData.get('theme_id'),
+                style_id: formData.get('style_id'),
+                model_id: formData.get('model_id'),
+                width: formData.get('width'),
+                height: formData.get('height'),
+                num_steps: formData.get('num_steps'),
+                guidance_scale: formData.get('guidance_scale'),
+                seed: formData.get('seed')
+            };
+            
+            fetch(`/api/workspaces/{{ workspace.id }}/saved-prompts`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(saveData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    console.log('Prompt saved successfully');
+                    // Reload saved prompts
+                    loadSavedPrompts();
+                }
+            })
+            .catch(error => {
+                console.error('Error saving prompt:', error);
+            });
+        }
+    }
+    
+    // Disable button and show loading state
+    generateBtn.disabled = true;
+    generateBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Generating...';
+    generateStatus.innerHTML = '<span class="text-info"><i class="bi bi-hourglass-split"></i> Generating image, please wait...</span>';
+    
+    // Send AJAX request
+    fetch(form.action, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Success - reload page to show new image
+            generateStatus.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Image generated successfully!</span>';
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            // Error
+            generateStatus.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-circle"></i> ' + (data.error || 'Generation failed') + '</span>';
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = '<i class="bi bi-magic"></i> Generate Image';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        generateStatus.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-circle"></i> Network error. Please try again.</span>';
+        generateBtn.disabled = false;
+        generateBtn.innerHTML = '<i class="bi bi-magic"></i> Generate Image';
+    });
+});
+
+// Load models and saved prompts on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadModels();
+    loadSavedPrompts();
+});
+</script>
 {% endblock %}

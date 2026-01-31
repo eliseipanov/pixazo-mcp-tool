@@ -8,7 +8,7 @@ Run this script to set up the database for development.
 from datetime import datetime
 from werkzeug.security import generate_password_hash
 from app import app
-from models import db, User, Workspace, Theme, Style, ChatMessage, GeneratedImage
+from models import db, User, Workspace, Theme, Style, ChatMessage, GeneratedImage, GenerativeModel
 
 
 def init_database():
@@ -21,17 +21,63 @@ def init_database():
         # Check if test user already exists
         test_user = User.query.filter_by(username='testuser').first()
         if not test_user:
-            # Create test user
+            # Create test user (superuser)
             test_user = User(
                 username='testuser',
                 email='test@example.com',
-                password_hash=generate_password_hash('testpass123')
+                password_hash=generate_password_hash('testpass123'),
+                is_superuser=True
             )
             db.session.add(test_user)
             db.session.commit()
-            print("✓ Test user created (username: testuser, password: testpass123)")
+            print("✓ Test user created (username: testuser, password: testpass123, superuser: True)")
         else:
             print("✓ Test user already exists")
+
+        # Create sample generative models
+        if GenerativeModel.query.count() == 0:
+            models = [
+                GenerativeModel(
+                    name='sdxl',
+                    display_name='SDXL (Stable Diffusion XL)',
+                    api_url='https://gateway.pixazo.ai/getImage/v1/getSDXLImage',
+                    api_key=None,
+                    default_width=768,
+                    default_height=1024,
+                    default_steps=20,
+                    default_guidance_scale=8.0,
+                    max_width=1536,
+                    max_height=2048,
+                    min_steps=10,
+                    max_steps=50,
+                    min_guidance_scale=1.0,
+                    max_guidance_scale=20.0,
+                    is_active=True
+                ),
+                GenerativeModel(
+                    name='flux',
+                    display_name='Flux Klein',
+                    api_url='https://gateway.pixazo.ai/flux-1-schnell/v1/getData',
+                    api_key=None,
+                    default_width=768,
+                    default_height=1024,
+                    default_steps=20,
+                    default_guidance_scale=8.0,
+                    max_width=1536,
+                    max_height=2048,
+                    min_steps=10,
+                    max_steps=50,
+                    min_guidance_scale=1.0,
+                    max_guidance_scale=20.0,
+                    is_active=True
+                )
+            ]
+            for model in models:
+                db.session.add(model)
+            db.session.commit()
+            print(f"✓ Created {len(models)} sample generative models")
+        else:
+            print("✓ Generative models already exist")
 
         # Create sample themes
         if Theme.query.count() == 0:
@@ -110,6 +156,7 @@ def init_database():
         print("  1. Login with username: testuser, password: testpass123")
         print("  2. Create workspaces, themes, and styles")
         print("  3. Start generating AI images")
+        print("  4. Manage generative models (superuser only)")
 
 
 if __name__ == '__main__':

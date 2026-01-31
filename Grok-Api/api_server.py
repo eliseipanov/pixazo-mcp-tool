@@ -204,6 +204,7 @@ class ImageGenerationRequest(BaseModel):
     guidance_scale: float = 8.0
     seed: int = -1  # -1 for random
     model: str = "sdxl"  # "sdxl" or "flux"
+    pixazo_api_key: str = None  # Optional Pixazo API key for this request
 
 @app.post("/v1/chat/completions")
 async def chat_completions(request: ChatCompletionRequest, api_key: str = Depends(get_api_key)):
@@ -388,8 +389,8 @@ async def generate_sdxl(request: ImageGenerationRequest, api_key: str = Depends(
     """Generate image using SDXL model"""
     logging.info(f"SDXL generation request from {api_key}")
     
-    # Load API key from environment
-    pixazo_api_key = os.getenv("PIXAZO_API_KEY")
+    # Use Pixazo API key from request or fall back to environment
+    pixazo_api_key = request.pixazo_api_key or os.getenv("PIXAZO_API_KEY")
     if not pixazo_api_key:
         raise HTTPException(status_code=500, detail="PIXAZO_API_KEY not configured")
     
@@ -400,7 +401,7 @@ async def generate_sdxl(request: ImageGenerationRequest, api_key: str = Depends(
         "height": request.height,
         "num_steps": request.num_steps,
         "guidance_scale": request.guidance_scale,
-        "seed": request.seed if request.seed != -1 else None
+        "seed": request.seed
     }
     
     if request.negative_prompt:
@@ -450,8 +451,8 @@ async def generate_flux(request: ImageGenerationRequest, api_key: str = Depends(
     """Generate image using Flux Klein model"""
     logging.info(f"Flux generation request from {api_key}")
     
-    # Load API key from environment
-    pixazo_api_key = os.getenv("PIXAZO_API_KEY")
+    # Use Pixazo API key from request or fall back to environment
+    pixazo_api_key = request.pixazo_api_key or os.getenv("PIXAZO_API_KEY")
     if not pixazo_api_key:
         raise HTTPException(status_code=500, detail="PIXAZO_API_KEY not configured")
     
@@ -462,14 +463,14 @@ async def generate_flux(request: ImageGenerationRequest, api_key: str = Depends(
         "height": request.height,
         "num_steps": request.num_steps,
         "guidance_scale": request.guidance_scale,
-        "seed": request.seed if request.seed != -1 else None
+        "seed": request.seed
     }
     
     if request.negative_prompt:
         payload["negative_prompt"] = request.negative_prompt
     
-    # Flux Klein endpoint (you can update this URL if different)
-    flux_url = "https://gateway.pixazo.ai/getImage/v1/getFluxImage"  # Update if different
+    # Flux Klein endpoint
+    flux_url = "https://gateway.pixazo.ai/flux-1-schnell/v1/getData"
     headers = {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache',
